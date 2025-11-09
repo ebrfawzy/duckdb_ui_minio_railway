@@ -2,16 +2,11 @@ import os
 import duckdb
 
 # Configuration from environment variables
-MINIO_ENDPOINT = os.environ.get("MINIO_PRIVATE_ENDPOINT")
-if MINIO_ENDPOINT and not MINIO_ENDPOINT.startswith(("http://", "https://")):
-    MINIO_ENDPOINT = f"http://{MINIO_ENDPOINT}"
-    MINIO_USE_SSL = False
-else:
-    MINIO_USE_SSL = True
-
+MINIO_PUBLIC_HOST = os.environ.get("MINIO_PUBLIC_HOST")
 MINIO_ROOT_USER = os.environ.get("MINIO_ROOT_USER")
 MINIO_ROOT_PASSWORD = os.environ.get("MINIO_ROOT_PASSWORD")
 MINIO_BUCKET = os.environ.get("MINIO_BUCKET", "garment")
+MINIO_USE_SSL = os.environ.get("MINIO_USE_SSL", "true").lower() in ("1", "true", "yes")
 UI_PORT = int(os.environ.get("PORT", "8080"))  # Use Railway's PORT env var
 MEM_LIMIT = os.environ.get("MEMORY_LIMIT", "256MB")
 THREADS = min(int(os.cpu_count()), 4)  # Limit max threads
@@ -21,7 +16,7 @@ os.makedirs("/app/data", exist_ok=True)
 
 
 def main():
-    if not (MINIO_ENDPOINT and MINIO_ROOT_USER and MINIO_ROOT_PASSWORD):
+    if not (MINIO_PUBLIC_HOST and MINIO_ROOT_USER and MINIO_ROOT_PASSWORD):
         print("Missing MinIO config.")
         return
 
@@ -50,31 +45,30 @@ def main():
         conn.execute(f"INSTALL {ext};")
         conn.execute(f"LOAD {ext};")
 
-    # Configure MinIO access
-    conn.execute("""SET s3_url_style='path';""")  # Force path-style URLs
-    conn.execute(f"""SET s3_endpoint='{MINIO_ENDPOINT}';""")
-    conn.execute(f"""SET s3_access_key_id='{MINIO_ROOT_USER}';""")
-    conn.execute(f"""SET s3_secret_access_key='{MINIO_ROOT_PASSWORD}';""")
-    conn.execute(f"""SET s3_use_ssl={str(MINIO_USE_SSL).lower()};""")
-    conn.execute("""SET s3_region='us-east-1';""")
+    # Define MinIO credentials and endpoint as a DuckDB secret (modern, reliable method)
+    conn.execute(
+        f"""
+        CREATE OR REPLACE SECRET garment_minio (
+            TYPE s3,
+            PROVIDER config,
+            KEY_ID '{MINIO_ROOT_USER}',
+            SECRET '{MINIO_ROOT_PASSWORD}',
+            ENDPOINT '{MINIO_PUBLIC_HOST}',
+            REGION 'us-east-1',
+            URL_STYLE 'path',
+            USE_SSL true
+        );
+    """
+    )
 
-    # Test connection with a simple list operation
-    print("Testing MinIO connection...")
-    try:
-        files = conn.execute(
-            f"""
-            SELECT 
-                regexp_replace(file, '.*/(.*?)\\.parquet', '\\1') AS table_name,
-                file AS s3_path 
-            FROM glob('s3://{MINIO_BUCKET}/db_zstd/*.parquet')
-            """
-        ).fetchall()
-        print("Successfully connected to MinIO")
-    except Exception as e:
-        print(f"Error connecting to MinIO: {str(e)}")
-        print(f"Endpoint: {MINIO_ENDPOINT}")
-        print(f"SSL: {MINIO_USE_SSL}")
-        raise
+    files = conn.execute(
+        f"""
+        SELECT 
+            regexp_replace(file, '.*/(.*?)\\.parquet', '\\1') AS table_name,
+            file AS s3_path 
+        FROM glob('s3://{MINIO_BUCKET}/db_zstd/*.parquet')
+        """
+    ).fetchall()
 
     for table_name, s3_path in files:
         conn.execute(
@@ -92,7 +86,6 @@ def main():
     print(
         f"DuckDB UI at http://localhost:{UI_PORT}\nMem limit: {MEM_LIMIT} | Threads: {THREADS}"
     )
-
 
 if __name__ == "__main__":
     main()
