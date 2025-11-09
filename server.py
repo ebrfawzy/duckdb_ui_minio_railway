@@ -50,30 +50,31 @@ def main():
         conn.execute(f"INSTALL {ext};")
         conn.execute(f"LOAD {ext};")
 
-    # Define MinIO credentials and endpoint as a DuckDB secret (modern, reliable method)
-    conn.execute(
-        f"""
-        CREATE OR REPLACE SECRET garment_minio (
-            TYPE s3,
-            PROVIDER config,
-            KEY_ID '{MINIO_ROOT_USER}',
-            SECRET '{MINIO_ROOT_PASSWORD}',
-            ENDPOINT '{MINIO_ENDPOINT}',
-            REGION 'us-east-1',
-            URL_STYLE 'path',
-            USE_SSL {str(MINIO_USE_SSL).lower()}
-        );
-    """
-    )
+    # Configure MinIO access
+    conn.execute("""SET s3_url_style='path';""")  # Force path-style URLs
+    conn.execute(f"""SET s3_endpoint='{MINIO_ENDPOINT}';""")
+    conn.execute(f"""SET s3_access_key_id='{MINIO_ROOT_USER}';""")
+    conn.execute(f"""SET s3_secret_access_key='{MINIO_ROOT_PASSWORD}';""")
+    conn.execute(f"""SET s3_use_ssl={str(MINIO_USE_SSL).lower()};""")
+    conn.execute("""SET s3_region='us-east-1';""")
 
-    files = conn.execute(
-        f"""
-        SELECT 
-            regexp_replace(file, '.*/(.*?)\\.parquet', '\\1') AS table_name,
-            file AS s3_path 
-        FROM glob('s3://{MINIO_BUCKET}/db_zstd/*.parquet')
-        """
-    ).fetchall()
+    # Test connection with a simple list operation
+    print("Testing MinIO connection...")
+    try:
+        files = conn.execute(
+            f"""
+            SELECT 
+                regexp_replace(file, '.*/(.*?)\\.parquet', '\\1') AS table_name,
+                file AS s3_path 
+            FROM glob('s3://{MINIO_BUCKET}/db_zstd/*.parquet')
+            """
+        ).fetchall()
+        print("Successfully connected to MinIO")
+    except Exception as e:
+        print(f"Error connecting to MinIO: {str(e)}")
+        print(f"Endpoint: {MINIO_ENDPOINT}")
+        print(f"SSL: {MINIO_USE_SSL}")
+        raise
 
     for table_name, s3_path in files:
         conn.execute(

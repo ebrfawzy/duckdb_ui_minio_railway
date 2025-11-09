@@ -16,7 +16,6 @@ echo "Starting DuckDB with MinIO..."
 echo "Configuration:"
 echo "- MINIO_PRIVATE_ENDPOINT: ${MINIO_PRIVATE_ENDPOINT}"
 echo "- MINIO_BUCKET: ${MINIO_BUCKET}"
-echo "- MINIO_USE_SSL: ${MINIO_USE_SSL}"
 echo "- PORT: ${PORT}"
 echo "- MEMORY_LIMIT: ${MEMORY_LIMIT}"
 
