@@ -10,7 +10,6 @@ echo "Starting DuckDB with MinIO..."
 
 # Set defaults for optional variables
 : "${MINIO_BUCKET:=garment}"
-: "${MINIO_USE_SSL:=true}"
 : "${PORT:=8080}"  # Use Railway's PORT environment variable
 : "${MEMORY_LIMIT:=256MB}"
 
