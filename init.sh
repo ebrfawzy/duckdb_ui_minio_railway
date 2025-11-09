@@ -21,7 +21,4 @@ echo "- MINIO_USE_SSL: ${MINIO_USE_SSL}"
 echo "- PORT: ${PORT}"
 echo "- MEMORY_LIMIT: ${MEMORY_LIMIT}"
 
-# Install additional required packages
-pip install --no-cache-dir psutil
-
 exec python /app/server.py

@@ -5,8 +5,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app
 
-# Install only required Python packages
-RUN pip install --no-cache-dir duckdb
+# Install required Python packages
+RUN pip install --no-cache-dir duckdb psutil
 
 WORKDIR /app
 
