@@ -42,6 +42,9 @@ def main():
     # Initialize DuckDB with optimized settings
     conn = duckdb.connect(DB_PATH)
     
+    # Set home directory for extensions
+    conn.execute("SET home_directory='/app/data';")
+    
     # Memory and performance settings
     conn.execute(f"SET memory_limit='{MEM_LIMIT}';")
     conn.execute(f"SET threads={THREADS};")

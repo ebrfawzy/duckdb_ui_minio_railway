@@ -10,9 +10,10 @@ RUN pip install --no-cache-dir duckdb psutil
 
 WORKDIR /app
 
-# Create data directory and set permissions
+# Create directories and set permissions
 RUN mkdir -p /app/data && \
-    chown -R nobody:nogroup /app
+    mkdir -p /tmp && \
+    chown -R nobody:nogroup /app /tmp
 
 # Copy application files
 COPY init.sh server.py ./
