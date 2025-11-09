@@ -39,11 +39,14 @@ def main():
     conn.execute("SET enable_object_cache=false;")
     conn.execute("SET preserve_insertion_order=false;")
     conn.execute("SET profiling_output='';")
+    conn.execute(f"SET ui_polling_interval = 0;")
+    conn.execute(f"SET ui_local_port={UI_PORT};")
 
     # Load required extensions
-    for ext in ["httpfs", "aws"]:
+    for ext in ["httpfs", "aws", "ui"]:
         conn.execute(f"INSTALL {ext};")
         conn.execute(f"LOAD {ext};")
+        conn.execute("SET home_directory='/app/data';")
 
     # Define MinIO credentials and endpoint as a DuckDB secret (modern, reliable method)
     conn.execute(
@@ -78,14 +81,11 @@ def main():
     tables = conn.execute("SHOW TABLES;").fetchall()
     print(f"Count of loaded tables: {len(tables)}")
 
-    conn.execute(f"SET ui_polling_interval = 0;")
-    conn.execute(f"SET ui_local_port={UI_PORT};")
-    conn.execute("INSTALL ui;")
-    conn.execute("LOAD ui;")
     conn.execute("CALL start_ui_server();")
     print(
         f"DuckDB UI at http://localhost:{UI_PORT}\nMem limit: {MEM_LIMIT} | Threads: {THREADS}"
     )
+
 
 if __name__ == "__main__":
     main()
