@@ -10,10 +10,12 @@ RUN pip install --no-cache-dir duckdb
 
 WORKDIR /app
 
-# Create directories and set permissions
-RUN mkdir -p /app/data && \
-    mkdir -p /tmp && \
-    chown -R nobody:nogroup /app /tmp
+# Create and configure home directory for nobody user (required for DuckDB UI)
+RUN mkdir -p /home/nobody /app && \
+    chown -R nobody:nogroup /home/nobody /app && \
+    chmod 755 /home/nobody
+
+ENV HOME=/home/nobody
 
 # Copy application files
 COPY init.sh server.py ./

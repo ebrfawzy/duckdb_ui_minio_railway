@@ -23,8 +23,8 @@ def main():
     # Initialize DuckDB with optimized settings
     conn = duckdb.connect(DB_PATH)
 
-    # Set home directory for extensions
-    conn.execute("SET home_directory='/app/data';")
+    # Set home directory for extensions (both DuckDB and system)
+    conn.execute("SET home_directory='/home/nobody';")
 
     # Memory and performance settings
     conn.execute(f"SET memory_limit='{MEM_LIMIT}';")
@@ -46,7 +46,6 @@ def main():
     for ext in ["httpfs", "aws", "ui"]:
         conn.execute(f"INSTALL {ext};")
         conn.execute(f"LOAD {ext};")
-        conn.execute("SET home_directory='/app/data';")
 
     # Define MinIO credentials and endpoint as a DuckDB secret (modern, reliable method)
     conn.execute(
