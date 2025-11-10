@@ -1,17 +1,15 @@
 FROM python:3.11-slim
 
-# avoid prompts during apt installs
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app \
-    HOME=/home/nobody
+    HOME=/home/nobody \
+    PORT=8080
 
-# Install minimal system deps
+# Install a minimal set of system packages
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    build-essential \
+    && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python deps
@@ -24,16 +22,13 @@ RUN mkdir -p /app /app/data /home/nobody/.duckdb/extension_data/ui \
     && chown -R nobody:nogroup /app /home/nobody \
     && chmod 755 /home/nobody
 
-# copy application files
+# Copy application files
 COPY init.sh server.py ./
-
 RUN chmod +x /app/init.sh
 
-# run as less-privileged user
+# Run as unprivileged user
 USER nobody
 
-# Railway will set PORT at runtime; default to 8080
-ENV PORT=8080
 EXPOSE 8080
 
 CMD [ "/app/init.sh" ]
