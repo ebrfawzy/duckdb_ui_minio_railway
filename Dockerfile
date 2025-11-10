@@ -1,33 +1,39 @@
 FROM python:3.11-slim
 
-# Use env vars for Python behavior and app path
-ENV PYTHONDONTWRITEBYTECODE=1 \
+# avoid prompts during apt installs
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app
+    PYTHONPATH=/app \
+    HOME=/home/nobody
 
-# Install socat (for proxy) and DuckDB
-RUN apt-get update && apt-get install -y socat && rm -rf /var/lib/apt/lists/*
+# Install minimal system deps
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python deps
 RUN pip install --no-cache-dir duckdb
 
 WORKDIR /app
 
-# Prepare home directory for the 'nobody' user (DuckDB UI stores state under $HOME/.duckdb)
-RUN mkdir -p /home/nobody /app /home/nobody/.duckdb/extension_data/ui && \
-    chown -R nobody:nogroup /home/nobody /app && \
-    chmod 755 /home/nobody
+# Prepare directories and permissions for DuckDB UI state
+RUN mkdir -p /app /app/data /home/nobody/.duckdb/extension_data/ui \
+    && chown -R nobody:nogroup /app /home/nobody \
+    && chmod 755 /home/nobody
 
-ENV HOME=/home/nobody
-
-# Copy application files into image and make init script executable
+# copy application files
 COPY init.sh server.py ./
+
 RUN chmod +x /app/init.sh
 
-# Switch to non-root user for running the app
+# run as less-privileged user
 USER nobody
 
-# Default port (Railway will override $PORT at runtime)
+# Railway will set PORT at runtime; default to 8080
 ENV PORT=8080
-EXPOSE ${PORT}
+EXPOSE 8080
 
-# Start the init script
 CMD [ "/app/init.sh" ]
