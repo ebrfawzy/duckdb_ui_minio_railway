@@ -10,6 +10,7 @@ import duckdb
 import signal
 import sys
 import traceback
+import contextlib
 
 MINIO_PUBLIC_HOST = os.environ.get("MINIO_PUBLIC_HOST")
 MINIO_ROOT_USER = os.environ.get("MINIO_ROOT_USER")
