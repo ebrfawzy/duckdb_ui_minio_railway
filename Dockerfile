@@ -7,13 +7,13 @@ ENV DEBIAN_FRONTEND=noninteractive \
     HOME=/home/nobody \
     PORT=8080
 
-# Install a minimal set of system packages
+# Minimal system deps
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python deps
-RUN pip install --no-cache-dir duckdb
+# Install Python deps: duckdb and aiohttp (async HTTP proxy)
+RUN pip install --no-cache-dir duckdb aiohttp
 
 WORKDIR /app
 
