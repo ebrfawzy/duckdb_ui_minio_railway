@@ -8,7 +8,7 @@ echo "Starting DuckDB with MinIO..."
 : "${MINIO_ROOT_USER:?MINIO_ROOT_USER must be set}"
 : "${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD must be set}"
 
-# Set defaults
+# Set defaults for optional variables, including Railway’s $PORT
 : "${MINIO_BUCKET:=garment}"
 : "${MINIO_USE_SSL:=true}"
 : "${PORT:=8080}"
@@ -17,29 +17,14 @@ echo "Starting DuckDB with MinIO..."
 echo "Configuration:"
 echo "- MINIO_PUBLIC_HOST: ${MINIO_PUBLIC_HOST}"
 echo "- MINIO_BUCKET: ${MINIO_BUCKET}"
-echo "- PORT: ${PORT}"
+echo "- MINIO_USE_SSL: ${MINIO_USE_SSL}"
+echo "- PORT (external): ${PORT}"
 echo "- MEMORY_LIMIT: ${MEMORY_LIMIT}"
 
-# Start DuckDB UI server in background
-python /app/server.py &
-PYTHON_PID=$!
+# Forward external port $PORT (0.0.0.0:$PORT) to localhost:$PORT inside the container
+# using socat, so that DuckDB UI (listening on 127.0.0.1:$PORT) is reachable externally.
+echo "Forwarding external port $PORT to DuckDB UI..."
+socat TCP4-LISTEN:"$PORT",fork,reuseaddr TCP4:127.0.0.1:"$PORT" &
 
-# Wait for DuckDB UI to start on localhost:4213
-echo "Waiting for DuckDB UI to start on localhost:4213..."
-for i in {1..60}; do
-    if nc -z 127.0.0.1 4213 2>/dev/null; then
-        echo "DuckDB UI is ready on port 4213!"
-        break
-    fi
-    if [ $i -eq 60 ]; then
-        echo "ERROR: DuckDB UI failed to start after 60 seconds"
-        echo "Python process status:"
-        ps aux | grep python || echo "Python process not found"
-        exit 1
-    fi
-    sleep 1
-done
-
-# Start socat to proxy 0.0.0.0:$PORT -> 127.0.0.1:4213
-echo "Starting socat proxy: 0.0.0.0:${PORT} -> 127.0.0.1:4213"
-exec socat TCP4-LISTEN:${PORT},bind=0.0.0.0,fork,reuseaddr TCP4:127.0.0.1:4213
+# Launch the Python server script
+exec python /app/server.py
