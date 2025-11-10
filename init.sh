@@ -3,6 +3,7 @@ set -euo pipefail
 
 echo "===> init.sh starting"
 
+# Required env vars
 : "${MINIO_PUBLIC_HOST:?MINIO_PUBLIC_HOST must be set}"
 : "${MINIO_ROOT_USER:?MINIO_ROOT_USER must be set}"
 : "${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD must be set}"
@@ -21,5 +22,6 @@ echo "- MEMORY_LIMIT: ${MEMORY_LIMIT}"
 
 # Exec the Python server which:
 #  - starts DuckDB and its UI on localhost:$PORT
-#  - runs an asyncio aiohttp reverse-proxy on 0.0.0.0:$PORT that streams responses
+#  - pre-warms the UI by requesting the local UI root so remote asset fetch completes
+#  - runs an aiohttp-based HTTP reverse-proxy on 0.0.0.0:$PORT that streams responses
 exec python /app/server.py

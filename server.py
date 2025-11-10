@@ -1,14 +1,22 @@
 #!/usr/bin/env python3
 """
-Starts DuckDB, registers S3 parquet views, starts the DuckDB UI on localhost:<PORT>,
-and runs an aiohttp-based HTTP reverse proxy on 0.0.0.0:<PORT> that streams
-the backend response to the client. Also provides a fast /health endpoint.
+DuckDB + UI startup + pre-warm + aiohttp reverse proxy.
+
+Sequence:
+  1. Start DuckDB, set conservative resource limits, install extensions.
+  2. Set ui_local_port and CALL start_ui_server() (UI binds to localhost:UI_PORT).
+  3. Pre-warm the UI by doing local HTTP GET(s) to http://127.0.0.1:UI_PORT/ so the UI
+     finishes fetching remote assets before external clients connect.
+  4. Start aiohttp proxy on 0.0.0.0:UI_PORT which streams backend responses to clients.
 """
 import os
 import sys
+import time
 import asyncio
 import duckdb
 import traceback
+import urllib.request
+from urllib.error import URLError, HTTPError
 from aiohttp import web, ClientSession, ClientTimeout
 
 MINIO_PUBLIC_HOST = os.environ.get("MINIO_PUBLIC_HOST")
@@ -37,7 +45,7 @@ def duckdb_start_and_setup():
     conn.execute("SET enable_logging=true;")
     conn.execute("SET logging_level='debug';")
     conn.execute(f"SET memory_limit='{MEM_LIMIT}';")
-    conn.execute("SET threads=1;")  # conservative
+    conn.execute("SET threads=1;")  # conservative for tiny containers
     conn.execute("SET temp_directory='/tmp';")
     conn.execute("SET max_temp_directory_size='512MB';")
     conn.execute("SET streaming_buffer_size='256KB';")
@@ -113,18 +121,50 @@ def duckdb_start_and_setup():
         sys.exit(1)
 
 
+def prewarm_local_ui(
+    url: str, timeout_per_try: float = 5.0, max_total: float = 25.0
+) -> bool:
+    """
+    Try to GET `url` locally in a loop until we receive any bytes or max_total seconds elapse.
+    Returns True if any successful response (HTTP or partial), False otherwise.
+    This allows the UI to fetch remote assets and become responsive before external clients connect.
+    """
+    deadline = time.time() + max_total
+    last_err = None
+    headers = {"User-Agent": "duckdb-ui-prewarm/1.0"}
+    while time.time() < deadline:
+        try:
+            with urllib.request.urlopen(
+                urllib.request.Request(url, headers=headers), timeout=timeout_per_try
+            ) as resp:
+                # success if we got any response (200, 302, etc.)
+                # read a small chunk to ensure the UI started sending bytes
+                chunk = resp.read(1)
+                print(
+                    f"[prewarm] got response status={resp.status}, first-byte-exists={bool(chunk)}"
+                )
+                return True
+        except (HTTPError, URLError, TimeoutError, ConnectionResetError) as e:
+            last_err = e
+            # wait briefly and retry
+            time.sleep(0.5)
+        except Exception as e:
+            last_err = e
+            time.sleep(0.5)
+    print(
+        f"[prewarm] failed to prewarm local UI within {max_total}s. last error: {last_err}"
+    )
+    return False
+
+
 async def proxy_handler(request):
     """
     Proxy incoming aiohttp request to local DuckDB UI (127.0.0.1:UI_PORT),
     streaming the response back to the client as chunks arrive.
     """
     target_url = f"http://127.0.0.1:{UI_PORT}{request.rel_url}"
-
-    # short-ish client timeout for connection/first-byte (adjust as needed)
     timeout = ClientTimeout(total=None, sock_connect=10, sock_read=60)
-
     headers = {k: v for k, v in request.headers.items() if k.lower() != "host"}
-    # preserve method and body
     data = await request.read()
 
     async with ClientSession(timeout=timeout) as session:
@@ -136,7 +176,6 @@ async def proxy_handler(request):
                 data=data,
                 allow_redirects=False,
             ) as resp:
-                # Prepare response headers (filter hop-by-hop)
                 excluded = {
                     "transfer-encoding",
                     "connection",
@@ -151,7 +190,6 @@ async def proxy_handler(request):
                     (k, v) for k, v in resp.headers.items() if k.lower() not in excluded
                 ]
 
-                # Stream response to client as it arrives
                 response = web.StreamResponse(
                     status=resp.status, reason=resp.reason, headers=headers_out
                 )
@@ -177,14 +215,25 @@ async def health_handler(request):
 
 
 async def main():
-    # Start DuckDB setup in executor (blocking)
+    # 1) Start and setup DuckDB + UI (blocking)
     loop = asyncio.get_running_loop()
     await loop.run_in_executor(None, duckdb_start_and_setup)
 
-    # set up aiohttp app
-    app = web.Application(client_max_size=0)  # unlimited client upload size
+    # 2) Pre-warm the local UI so it fetches remote assets before we accept external requests.
+    local_root = f"http://127.0.0.1:{UI_PORT}/"
+    print(
+        f"[prewarm] attempting to prewarm local UI at {local_root} (this may take a few seconds)"
+    )
+    ok = prewarm_local_ui(local_root, timeout_per_try=5.0, max_total=25.0)
+    if not ok:
+        # we still continue — the proxy will start, but cold clients might see delays
+        print(
+            "[prewarm] warning: prewarm failed; proxy will start anyway (clients may see slow first loads)"
+        )
+
+    # 3) Start aiohttp proxy on 0.0.0.0:UI_PORT
+    app = web.Application(client_max_size=0)
     app.add_routes([web.get("/health", health_handler)])
-    # catch-all route for proxying everything else
     app.router.add_route("*", "/{tail:.*}", proxy_handler)
 
     runner = web.AppRunner(app)
@@ -195,7 +244,7 @@ async def main():
     print(
         f"[proxy] aiohttp proxy listening on 0.0.0.0:{UI_PORT}, proxying to http://127.0.0.1:{UI_PORT}"
     )
-    # keep running until killed
+
     try:
         while True:
             await asyncio.sleep(3600)
