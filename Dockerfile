@@ -12,7 +12,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python deps: duckdb and aiohttp (async HTTP proxy)
+# Install Python deps
 RUN pip install --no-cache-dir duckdb aiohttp
 
 WORKDIR /app
@@ -22,7 +22,7 @@ RUN mkdir -p /app /app/data /home/nobody/.duckdb/extension_data/ui \
     && chown -R nobody:nogroup /app /home/nobody \
     && chmod 755 /home/nobody
 
-# Copy application files
+# Copy app files
 COPY init.sh server.py ./
 RUN chmod +x /app/init.sh
 
