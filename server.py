@@ -21,7 +21,7 @@ def main():
         return
 
     # Initialize DuckDB with optimized settings
-    conn = duckdb.connect(DB_PATH)
+    conn = duckdb.connect(DB_PATH, config={"allow_unsigned_extensions": "true"})
 
     # Set home directory for extensions (both DuckDB and system)
     conn.execute("SET home_directory='/home/nobody';")
@@ -40,9 +40,8 @@ def main():
     conn.execute("SET preserve_insertion_order=false;")
     conn.execute("SET profiling_output='';")
     conn.execute(f"SET ui_polling_interval=0;")
-    conn.execute(f"SET ui_local_port={UI_PORT};")
-    conn.execute("SET allow_unsigned_extensions=true;")
-    conn.execute("SET ui_remote_url = 'https://garmentio.up.railway.app/';")
+    # conn.execute(f"SET ui_local_port={UI_PORT};")
+    conn.execute("SET ui_remote_url = 'https://garmentio.up.railway.app';")
 
     # Load required extensions
     for ext in ["httpfs", "aws", "ui"]:
