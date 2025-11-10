@@ -41,6 +41,7 @@ def main():
     conn.execute("SET profiling_output='';")
     conn.execute(f"SET ui_polling_interval = 0;")
     conn.execute(f"SET ui_local_port={UI_PORT};")
+    conn.execute("SET ui_listen_address='0.0.0.0';")
 
     # Load required extensions
     for ext in ["httpfs", "aws", "ui"]:
@@ -80,9 +81,9 @@ def main():
     tables = conn.execute("SHOW TABLES;").fetchall()
     print(f"Count of loaded tables: {len(tables)}")
 
-    conn.execute("CALL start_ui_server('0.0.0.0');")
+    conn.execute("CALL start_ui_server();")
     print(
-        f"DuckDB UI at http://0.0.0.0:{UI_PORT}\nMem limit: {MEM_LIMIT} | Threads: {THREADS}"
+        f"DuckDB UI running on port {UI_PORT}\nMem limit: {MEM_LIMIT} | Threads: {THREADS}"
     )
 
 
