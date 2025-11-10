@@ -292,7 +292,7 @@ async def main():
 
     # Background monitor: if backend not ready yet, keep trying to detect it and flip _backend_ready true
     async def monitor_backend():
-        nonlocal _backend_ready
+        global _backend_ready
         while True:
             if not _backend_ready:
                 if wait_for_tcp("127.0.0.1", UI_PORT, 1.0):
