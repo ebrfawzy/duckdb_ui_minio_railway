@@ -7,7 +7,7 @@ MINIO_ROOT_USER = os.environ.get("MINIO_ROOT_USER")
 MINIO_ROOT_PASSWORD = os.environ.get("MINIO_ROOT_PASSWORD")
 MINIO_BUCKET = os.environ.get("MINIO_BUCKET", "garment")
 MINIO_USE_SSL = os.environ.get("MINIO_USE_SSL", "true").lower() in ("1", "true", "yes")
-UI_PORT = int(os.environ.get("PORT", "4213"))  # Use Railway's PORT env var
+UI_PORT = int(os.environ.get("PORT", "8080"))  # Use Railway's PORT env var
 MEM_LIMIT = os.environ.get("MEMORY_LIMIT", "1GB")
 THREADS = min(int(os.cpu_count()), 4)  # Limit max threads
 
@@ -27,6 +27,9 @@ def main():
     conn.execute("SET home_directory='/home/nobody';")
 
     # Memory and performance settings
+    conn.execute("SET enable_logging=true;")
+    conn.execute("SET logging_level='debug';")
+    # conn.execute("SET logging_storage='file';")
     conn.execute(f"SET memory_limit='{MEM_LIMIT}';")
     conn.execute(f"SET threads={THREADS};")
     conn.execute("SET temp_directory='/tmp';")

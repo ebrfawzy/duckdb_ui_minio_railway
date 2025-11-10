@@ -24,12 +24,7 @@ RUN chmod +x /app/init.sh
 # Use non-root user for security
 USER nobody
 
-# Health check to help Railway monitor the container
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-4213}/ || exit 1
-
-# Default port (Railway will override with their PORT env var)
-ENV PORT=4213
+ENV PORT=8080
 EXPOSE ${PORT}
 
 CMD [ "/app/init.sh" ]
