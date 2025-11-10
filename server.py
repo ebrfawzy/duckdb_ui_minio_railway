@@ -7,8 +7,8 @@ MINIO_ROOT_USER = os.environ.get("MINIO_ROOT_USER")
 MINIO_ROOT_PASSWORD = os.environ.get("MINIO_ROOT_PASSWORD")
 MINIO_BUCKET = os.environ.get("MINIO_BUCKET", "garment")
 MINIO_USE_SSL = os.environ.get("MINIO_USE_SSL", "true").lower() in ("1", "true", "yes")
-UI_PORT = int(os.environ.get("PORT", "8080"))  # Use Railway's PORT env var
-MEM_LIMIT = os.environ.get("MEMORY_LIMIT", "256MB")
+UI_PORT = int(os.environ.get("PORT", "4213"))  # Use Railway's PORT env var
+MEM_LIMIT = os.environ.get("MEMORY_LIMIT", "1GB")
 THREADS = min(int(os.cpu_count()), 4)  # Limit max threads
 
 DB_PATH = f"/app/data/{MINIO_BUCKET}.duckdb"
@@ -21,7 +21,7 @@ def main():
         return
 
     # Initialize DuckDB with optimized settings
-    conn = duckdb.connect(DB_PATH, config={"allow_unsigned_extensions": "true"})
+    conn = duckdb.connect(DB_PATH)
 
     # Set home directory for extensions (both DuckDB and system)
     conn.execute("SET home_directory='/home/nobody';")
@@ -40,8 +40,6 @@ def main():
     conn.execute("SET preserve_insertion_order=false;")
     conn.execute("SET profiling_output='';")
     conn.execute(f"SET ui_polling_interval=0;")
-    # conn.execute(f"SET ui_local_port={UI_PORT};")
-    conn.execute("SET ui_remote_url = 'https://garmentio.up.railway.app';")
 
     # Load required extensions
     for ext in ["httpfs", "aws", "ui"]:
@@ -74,6 +72,7 @@ def main():
     ).fetchall()
 
     for table_name, s3_path in files:
+        print(f"Loading table: {table_name} from {s3_path}")
         conn.execute(
             f"CREATE OR REPLACE VIEW {table_name} AS SELECT * FROM parquet_scan('{s3_path}');"
         )
