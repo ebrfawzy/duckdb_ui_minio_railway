@@ -39,9 +39,10 @@ def main():
     conn.execute("SET enable_object_cache=false;")
     conn.execute("SET preserve_insertion_order=false;")
     conn.execute("SET profiling_output='';")
-    conn.execute(f"SET ui_polling_interval = 0;")
+    conn.execute(f"SET ui_polling_interval=0;")
     conn.execute(f"SET ui_local_port={UI_PORT};")
-    conn.execute("SET ui_listen_address='0.0.0.0';")
+    conn.execute("SET allow_unsigned_extensions=true;")
+    conn.execute("SET ui_remote_url = 'https://garmentio.up.railway.app/';")
 
     # Load required extensions
     for ext in ["httpfs", "aws", "ui"]:
