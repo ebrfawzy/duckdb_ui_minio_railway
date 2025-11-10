@@ -12,7 +12,7 @@ echo "Starting DuckDB with MinIO..."
 : "${MINIO_BUCKET:=garment}"
 : "${MINIO_USE_SSL:=true}"
 : "${PORT:=8080}"
-: "${MEMORY_LIMIT:=1GB}"
+: "${MEMORY_LIMIT:=256MB}"
 
 echo "Configuration:"
 echo "- MINIO_PUBLIC_HOST: ${MINIO_PUBLIC_HOST}"
@@ -26,10 +26,16 @@ PYTHON_PID=$!
 
 # Wait for DuckDB UI to start on localhost:4213
 echo "Waiting for DuckDB UI to start on localhost:4213..."
-for i in {1..30}; do
+for i in {1..60}; do
     if nc -z 127.0.0.1 4213 2>/dev/null; then
-        echo "DuckDB UI is ready!"
+        echo "DuckDB UI is ready on port 4213!"
         break
+    fi
+    if [ $i -eq 60 ]; then
+        echo "ERROR: DuckDB UI failed to start after 60 seconds"
+        echo "Python process status:"
+        ps aux | grep python || echo "Python process not found"
+        exit 1
     fi
     sleep 1
 done
