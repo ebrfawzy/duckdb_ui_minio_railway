@@ -41,6 +41,7 @@ def main():
     conn.execute("SET profiling_output='';")
     conn.execute(f"SET ui_polling_interval = 0;")
     conn.execute(f"SET ui_local_port={UI_PORT};")
+    conn.execute("SET ui_bind_host='0.0.0.0';")
 
     # Load required extensions
     for ext in ["httpfs", "aws", "ui"]:
