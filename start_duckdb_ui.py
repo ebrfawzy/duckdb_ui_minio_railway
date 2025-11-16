@@ -108,7 +108,7 @@ def main():
             f"CREATE OR REPLACE VIEW {table_name} AS SELECT * FROM parquet_scan('{s3_path}');"
         )
 
-    conn.execute("CALL start_ui();")
+    conn.execute("CALL start_ui_server();")
     print("DuckDB UI started.")
 
     while True:

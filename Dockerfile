@@ -1,7 +1,7 @@
 FROM python:3.11-slim-bookworm
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends nginx gettext-base \
+    && apt-get install -y --no-install-recommends nginx libnginx-mod-http-lua gettext-base \
     && rm -rf /var/lib/apt/lists/* \
     && pip install --no-cache-dir duckdb
 
