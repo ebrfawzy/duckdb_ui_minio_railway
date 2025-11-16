@@ -53,7 +53,7 @@ def duckdb_start_and_setup():
     try:
         conn.execute(
             f"""
-            CREATE OR REPLACE SECRET garment_minio (
+            CREATE OR REPLACE PERSISTENT SECRET garment_minio (
                 TYPE s3,
                 PROVIDER config,
                 KEY_ID '{MINIO_ROOT_USER}',
