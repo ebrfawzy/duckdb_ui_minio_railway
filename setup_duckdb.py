@@ -70,12 +70,12 @@ def duckdb_start_and_setup():
         print(f"[setup] ✗ Failed to create secret: {e}", file=sys.stderr)
 
     # Load tables from MinIO
-    print(f"[setup] Scanning S3 bucket: s3://{MINIO_BUCKET}/db_zstd_test/*.parquet")
+    print(f"[setup] Scanning S3 bucket: s3://{MINIO_BUCKET}/db_zstd/*.parquet")
     try:
         files = conn.execute(
             f"""
             SELECT regexp_replace(file, '.*/(.*?)\\.parquet', '\\1') AS table_name, file AS s3_path
-            FROM glob('s3://{MINIO_BUCKET}/db_zstd_test/*.parquet')
+            FROM glob('s3://{MINIO_BUCKET}/db_zstd/*.parquet')
             """
         ).fetchall()
         print(f"[setup] Found {len(files)} parquet files")
